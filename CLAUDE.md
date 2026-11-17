@@ -76,6 +76,22 @@ Agents run on mal's MacBook and drive Xcode through MCP, using either Apple's Xc
 - Naming follows the Swift API Design Guidelines. One main type per file, with the file named after it.
 - Never commit secrets, APNs keys, or provisioning profiles.
 
+## Engineering standards
+
+Working code isn't done code. These apply to every PR.
+
+- **Secrets and environments:** Debug, Staging and Release build configurations, each with its own `.xcconfig` and its own server URLs and tokens. Secret `.xcconfig` files are gitignored, and only a `*.example.xcconfig` is committed. Never reuse a token across environments.
+- **Staging mirrors production:** test against staging before anything reaches testers.
+- **Observability from day one:** use `os.Logger` with a subsystem and category per service, MetricKit for crash and hang reports, and a crash reporter once the backend is chosen. Log every connection state change and every alert received and shown.
+- **Never trust incoming data:** decode ACL and backend messages defensively. Malformed or unexpected data is logged and ignored, never crashes the app, and never shows as a false all-clear. Any backend we build validates its own input, rate-limits auth and write endpoints, restricts CORS to specific origins, and has a `/health` endpoint.
+- **Wrap every external service** behind a protocol in `Services/`, so caching, retries or a provider swap touch one file.
+- **Test the unhappy paths:** dropped sockets, missed heartbeats, refused permissions, GPS loss, bad JSON, and slow or out-of-order messages. These matter more than the happy path for a safety app.
+- **Time:** store and send timestamps in UTC (ISO 8601 or `Date`), and convert to local time only for display. Use a monotonic clock (`ContinuousClock`) for heartbeat timeouts, never wall-clock time.
+- **CI early:** a GitHub Actions macOS workflow builds and runs the tests on every PR. TestFlight builds come from the pipeline, not from a laptop.
+- **No "later":** anything hacky gets fixed now or gets a GitHub issue that the code links to (`// TODO(#12): ...`). Feature flags live in one `FeatureFlags` type, not in commented-out code.
+- **Schema changes:** version any database schema, local SwiftData included, through migrations.
+- **Keep this file current:** when a run, deploy or setup step changes, update this file in the same PR.
+
 ## Agent roles and handoffs
 
 Three Claude agents share this repo. Each works on its own branch and hands off through pull requests.
